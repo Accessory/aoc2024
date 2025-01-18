@@ -1,0 +1,35 @@
+fn run2(input_file: &Path) {
+    // Preamble
+    let mut result = 0;
+
+    // Parse
+    let grid: Grid<char> = parse_into_char_vector_vector(input_file).into();
+    let max_x = grid.get_max_x();
+    let max_y = grid.get_max_y();
+    let guard = grid.find_first(&'^').unwrap();
+    let guard_direction = GridDirection::Up;
+
+    // Solve
+    for y in 0..max_y {
+        for x in 0..max_x {
+
+            if grid.get(x, y).is_some_and(|c| c != &'.') {
+                continue;
+            }
+
+            if has_cycle(
+                &grid,
+                guard,
+                guard_direction,
+                GridPoint { x, y },
+                max_x,
+                max_y,
+            ) {
+                result += 1;
+            }
+        }
+    }
+
+    // Result
+    println!("Result of part 2 is {}", result);
+}

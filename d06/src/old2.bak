@@ -1,0 +1,162 @@
+use rayon::prelude::*;
+use std::path::Path;
+use fxhash::FxHashMap;
+use utils::grid::Grid;
+use utils::grid_direction::GridDirection;
+use utils::grid_point::GridPoint;
+use utils::{get_input_path, parse_into_char_vector_vector};
+
+fn run(input_file: &Path) {
+    // Preamble
+
+    // Parse
+    let mut grid: Grid<char> = parse_into_char_vector_vector(input_file).into();
+    let max_x = grid.get_max_x();
+    let max_y = grid.get_max_y();
+    let mut guard = grid.find_first(&'^').unwrap();
+    // grid.set_from_point(&guard, 'X');
+    let mut guard_direction = GridDirection::Up;
+
+    // println!("Grid:");
+    // println!("{grid}");
+
+
+    loop {
+        grid.set_from_point(&guard, 'X');
+        let next = match guard.next_by_direction_with_check(&guard_direction, max_x, max_y) {
+            None => break,
+            Some(guard) => guard,
+        };
+        let next_value = grid.get_from_point(&next).unwrap_or(&'.');
+
+        match next_value {
+            '#' => {
+                guard_direction.turn_right();
+                continue;
+            }
+            _ => {}
+        }
+        guard = next;
+    }
+
+    // Solve
+    let result = grid.count_for(&'X');
+
+    // Result
+
+    // println!("Grid:");
+    // println!("{grid}");
+    println!("Result of part 1 is {}", result);
+}
+
+fn run2(input_file: &Path) {
+    // Preamble
+    // Parse
+    let grid: Grid<char> = parse_into_char_vector_vector(input_file).into();
+    let max_x = grid.get_max_x();
+    let max_y = grid.get_max_y();
+    let guard = grid.find_first(&'^').unwrap();
+    let guard_direction = GridDirection::Up;
+
+    let points = create_x_points(&grid);
+
+    // Solve
+    let result: usize = (0..max_y).into_par_iter().map(|y| {
+        let mut rtn = 0;
+        for x in 0..max_x {
+            if grid.get(x, y).is_some_and(|c| c != &'.') {
+                continue;
+            }
+
+            if has_cycle(
+                &grid,
+                guard,
+                guard_direction,
+                GridPoint { x, y },
+                max_x,
+                max_y,
+            ) {
+                rtn += 1;
+            }
+        }
+        rtn
+    }).sum();
+
+    // Result
+    println!("Result of part 2 is {}", result);
+}
+
+fn create_x_points(grid: &Grid<char>) -> Vec<GridPoint> {
+    let mut rtn = Vec::new();
+
+
+
+    rtn
+}
+
+fn has_cycle(
+    grid: &Grid<char>,
+    mut guard: GridPoint,
+    mut guard_direction: GridDirection,
+    obstacle: GridPoint,
+    max_x: usize,
+    max_y: usize,
+) -> bool {
+    let mut seen: FxHashMap<GridPoint, u8> = FxHashMap::default();
+    loop {
+        let entry = seen.entry(guard).or_insert(0);
+        if guard_direction.u8_has_direction(*entry) {
+            return true;
+        }
+        *entry = guard_direction.add_to_u8(*entry);
+
+        let next = match guard.next_by_direction_with_check(&guard_direction, max_x, max_y) {
+            None => return false,
+            Some(value) => value,
+        };
+
+        if next == obstacle {
+            guard_direction.turn_right();
+            continue
+        }
+
+        let next_value = match grid.get_from_point(&next) {
+            None => return false,
+            Some(value) => value,
+        };
+
+        match next_value {
+            '#' | 'O' => guard_direction.turn_right(),
+            '.' | '^' => guard = next,
+            _ => panic!("Should not be here. Value is {next_value}"),
+        }
+    }
+}
+
+fn main() {
+    let input_file = get_input_path(env!("CARGO_MANIFEST_DIR"));
+
+    println!("Running {}", env!("CARGO_PKG_NAME"));
+    println!("InputFile: {}", input_file.display());
+
+    run(input_file.as_path());
+    run2(input_file.as_path());
+}
+
+#[cfg(test)]
+mod main_test {
+    use utils::get_test_input_path;
+
+    use crate::run;
+    use crate::run2;
+
+    #[test]
+    fn test_input_part_1() {
+        run(&get_test_input_path(env!("CARGO_MANIFEST_DIR")));
+    }
+
+    #[test]
+    fn test_input_part_2() {
+        run2(&get_test_input_path(env!("CARGO_MANIFEST_DIR")));
+    }
+}
